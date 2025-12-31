@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bernard's Toolbox_</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        bg: '#050505',      // 极深灰/黑背景
+                        surface: '#0a0a0a', // 卡片/区块背景
+                        border: '#262626',  // 边框颜色
+                        primary: '#00dc82', // 极客绿 (Nuxt Green 风格)
+                        secondary: '#333333',
+                        text: '#e5e5e5',    // 主要文字
+                        muted: '#737373'    // 次要文字
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* 全局样式重置 */
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: #050505;
+            color: #e5e5e5;
+            overflow-x: hidden;
+        }
+
+        /* 自定义滚动条 - 极简风格 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #333; border: 1px solid #050505; }
+        ::-webkit-scrollbar-thumb:hover { background: #00dc82; }
+
+        /* 玻璃拟态/模糊背景 */
+        .glass {
+            background: rgba(5, 5, 5, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        /* 发光效果 */
+        .hover-glow:hover {
+            box-shadow: 0 0 20px rgba(0, 220, 130, 0.1);
+            border-color: #00dc82;
+        }
+
+        /* 选中态文字颜色 */
+        ::selection {
+            background: #00dc82;
+            color: #000;
+        }
+
+        /* 打字机光标闪烁 */
+        .cursor-blink::after {
+            content: '_';
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink { 
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* 工具卡片特殊效果 */
+        .tool-card {
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 1px solid transparent;
+            pointer-events: none;
+            transition: border-color 0.2s;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- 顶部导航 -->
+    <header class="sticky top-0 z-50 border-b border-border glass">
+        <div class="container mx-auto px-4 md:px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            
+            <!-- Logo -->
+            <div class="flex items-center gap-3 group cursor-default select-none">
+                <div class="w-8 h-8 bg-primary text-black flex items-center justify-center font-bold text-lg rounded-sm">
+                    B
+                </div>
+                <div class="flex flex-col">
+                    <h1 class="text-lg font-bold tracking-tighter leading-none">BERNARD_TOOLBOX<span class="text-primary animate-pulse">.exe</span></h1>
+                    <span class="text-[10px] text-muted uppercase tracking-[0.2em] mt-0.5">System Ready</span>
+                </div>
+            </div>
+
+            <!-- 搜索框 -->
+            <div class="relative w-full md:w-96 group">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-primary transition-colors font-bold">></span>
+                <input type="text" id="searchInput" placeholder="SEARCH_COMMAND..." 
+                    class="w-full bg-surface border border-border py-2.5 pl-8 pr-4 text-sm focus:outline-none focus:border-primary focus:bg-surface/50 transition-all text-text placeholder-muted/50 rounded-sm">
+                <!-- 右侧装饰 -->
+                <div class="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                    <div class="w-1 h-1 bg-muted rounded-full group-focus-within:bg-primary transition-colors"></div>
+                    <div class="w-1 h-1 bg-muted rounded-full group-focus-within:bg-primary transition-colors delay-75"></div>
+                    <div class="w-1 h-1 bg-muted rounded-full group-focus-within:bg-primary transition-colors delay-150"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主体内容 -->
+    <main class="container mx-auto px-4 md:px-6 py-10 flex-grow">
+        
+        <!-- 状态栏 (装饰性) -->
+        <div class="flex flex-wrap items-center gap-6 mb-8 text-xs text-muted border-b border-border/50 pb-4 select-none">
+            <span class="flex items-center gap-2"><div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>STATUS: ONLINE</span>
+            <span>MEM: 64TB</span>
+            <span>USER: ADMIN</span>
+            <span class="hidden md:inline ml-auto" id="currentDate">DATE: 2025-01-01</span>
+        </div>
+
+        <!-- 分类筛选 -->
+        <div class="flex flex-wrap gap-3 mb-10" id="categoryContainer">
+            <button onclick="filterTools('all')" class="category-btn active px-4 py-1.5 text-xs border border-primary bg-primary text-black font-bold rounded-sm uppercase tracking-wide hover:opacity-90 transition-opacity">
+                [ALL_MODULES]
+            </button>
+            <!-- 动态生成 -->
+        </div>
+
+        <!-- 工具网格 -->
+        <div id="toolsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <!-- 动态生成 -->
+        </div>
+
+        <!-- 无结果提示 -->
+        <div id="noResults" class="hidden text-center py-24 border border-dashed border-border rounded-sm bg-surface/30">
+            <div class="inline-flex flex-col items-center">
+                <i class="fa-solid fa-triangle-exclamation text-4xl text-muted mb-4"></i>
+                <p class="text-text font-bold text-lg">> ERROR: 404_NOT_FOUND</p>
+                <p class="text-muted text-sm mt-2 font-light">Target module not detected in database.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部 -->
+    <footer class="border-t border-border mt-auto bg-surface py-8">
+        <div class="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-xs text-muted gap-4">
+            <p class="cursor-blink">> Bernard's Digital Workspace v2.0 // EOF</p>
+            <div class="flex gap-6">
+                <a href="#" class="hover:text-primary transition-colors flex items-center gap-2 group">
+                    <i class="fa-brands fa-github"></i> <span class="group-hover:underline decoration-primary underline-offset-4">GITHUB</span>
+                </a>
+                <a href="#" class="hover:text-primary transition-colors flex items-center gap-2 group">
+                    <i class="fa-brands fa-twitter"></i> <span class="group-hover:underline decoration-primary underline-offset-4">TWITTER</span>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 逻辑脚本 -->
+    <script>
+        // ==========================================
+        // 数据源
+        // ==========================================
+        const toolsData = [
+            // --- 图片/视频编辑 ---
+            {
+                name: "EzRemove",
+                url: "https://ezremove.ai/zh/",
+                desc: "图片/视频背景/水印去除",
+                category: "MEDIA_PROC",
+                icon: "fa-solid fa-eraser",
+                color: "" // 统一由CSS控制颜色，不再硬编码颜色类
+            },
+            {
+                name: "Coze",
+                url: "https://space.coze.cn/",
+                desc: "字节出品 AI Agent 平台",
+                category: "AI_AGENT",
+                icon: "fa-solid fa-gem",
+                color: ""
+            },
+            {
+                name: "AnyGen",
+                url: "https://www.anygen.io/home",
+                desc: "字节出品, 类似Manus",
+                category: "AI_AGENT",
+                icon: "fa-solid fa-book-open",
+                color: ""
+            },
+            
+            // --- 媒体处理 ---
+            {
+                name: "Grok",
+                url: "https://grok.com/",
+                desc: "搜索/事实核查/日常对话",
+                category: "SEARCH",
+                icon: "fa-solid fa-magnifying-glass-chart",
+                color: ""
+            },
+            {
+                name: "Cursor",
+                url: "https://cursor.com/",
+                desc: "OpenAI IDE 代码编辑器",
+                category: "DEV_TOOLS",
+                icon: "fa-solid fa-code",
+                color: ""
+            },
+            {
+                name: "Windsurf",
+                url: "https://windsurf.com/",
+                desc: "IDE 智能编程环境",
+                category: "DEV_TOOLS",
+                icon: "fa-solid fa-terminal",
+                color: ""
+            },
+            
+            // --- 设计与创作 ---
+            {
+                name: "Gemini",
+                url: "https://gemini.google.com/app",
+                desc: "Google 全能 AI 助手",
+                category: "AI_AGENT",
+                icon: "fa-solid fa-brain",
+                color: ""
+            },
+            {
+                name: "Remove.bg",
+                url: "https://www.remove.bg",
+                desc: "一键智能抠图，去除图片背景",
+                category: "DESIGN",
+                icon: "fa-solid fa-image",
+                color: ""
+            },
+
+            // --- 效率与工作流 ---
+            {
+                name: "GitHub",
+                url: "https://github.com",
+                desc: "代码托管，数字资产库",
+                category: "DEV_TOOLS",
+                icon: "fa-brands fa-github",
+                color: ""
+            }
+        ];
+
+        // ==========================================
+        // 渲染逻辑
+        // ==========================================
+        
+        const toolsGrid = document.getElementById('toolsGrid');
+        const searchInput = document.getElementById('searchInput');
+        const categoryContainer = document.getElementById('categoryContainer');
+        const noResults = document.getElementById('noResults');
+
+        // 设置日期
+        document.getElementById('currentDate').textContent = 'DATE: ' + new Date().toISOString().split('T')[0];
+
+        function init() {
+            renderCategories();
+            renderTools(toolsData);
+        }
+
+        function renderCategories() {
+            const categories = [...new Set(toolsData.map(item => item.category))];
+            
+            categories.forEach(cat => {
+                const btn = document.createElement('button');
+                // 默认样式
+                btn.className = `category-btn px-4 py-1.5 text-xs border border-border text-muted hover:border-primary hover:text-primary transition-all rounded-sm uppercase bg-surface`;
+                btn.textContent = `[${cat}]`;
+                btn.onclick = () => filterTools(cat, btn);
+                categoryContainer.appendChild(btn);
+            });
+        }
+
+        function renderTools(data) {
+            toolsGrid.innerHTML = '';
+            
+            if (data.length === 0) {
+                noResults.classList.remove('hidden');
+                return;
+            } else {
+                noResults.classList.add('hidden');
+            }
+
+            data.forEach((tool, index) => {
+                const card = document.createElement('a');
+                card.href = tool.url;
+                card.target = "_blank";
+                // 卡片样式
+                card.className = `tool-card group block h-full bg-surface border border-border p-5 hover-glow hover:-translate-y-1 transition-all duration-300 relative overflow-hidden flex flex-col rounded-sm`;
+                
+                // 延迟动画
+                card.style.animation = `fadeIn 0.5s ease-out ${index * 0.05}s backwards`;
+
+                card.innerHTML = `
+                    <!-- 装饰角标 -->
+                    <div class="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-100 transition-opacity">
+                        <div class="w-2 h-2 border-t border-r border-primary"></div>
+                    </div>
+                    <div class="absolute bottom-0 left-0 p-2 opacity-20 group-hover:opacity-100 transition-opacity">
+                        <div class="w-2 h-2 border-b border-l border-primary"></div>
+                    </div>
+
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div class="text-2xl text-muted group-hover:text-primary transition-colors">
+                            <i class="${tool.icon}"></i>
+                        </div>
+                        <span class="text-[10px] font-bold text-muted border border-border px-1.5 py-0.5 rounded-sm uppercase tracking-wider group-hover:border-primary/30 group-hover:text-primary/80 transition-colors">
+                            ${tool.category}
+                        </span>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-text mb-2 group-hover:text-primary transition-colors flex items-center gap-2">
+                        <span class="opacity-0 group-hover:opacity-100 -ml-4 group-hover:ml-0 transition-all duration-300 text-primary">></span>
+                        ${tool.name}
+                    </h3>
+                    
+                    <p class="text-xs text-muted leading-relaxed mb-6 flex-grow line-clamp-2 group-hover:text-gray-400 transition-colors">
+                        ${tool.desc}
+                    </p>
+                    
+                    <div class="mt-auto pt-3 border-t border-border/50 flex justify-between items-center text-[10px] text-muted font-bold tracking-widest uppercase group-hover:text-primary/70 transition-colors">
+                        <span>EXEC_MODULE</span>
+                        <i class="fa-solid fa-arrow-right -translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all"></i>
+                    </div>
+                `;
+                toolsGrid.appendChild(card);
+            });
+        }
+
+        function filterTools(category, btnElement) {
+            // 重置按钮样式
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.className = `category-btn px-4 py-1.5 text-xs border border-border text-muted hover:border-primary hover:text-primary transition-all rounded-sm uppercase bg-surface`;
+            });
+
+            // 设置选中样式
+            if (btnElement) {
+                btnElement.className = `category-btn active px-4 py-1.5 text-xs border border-primary bg-primary text-black font-bold rounded-sm uppercase tracking-wide hover:opacity-90 transition-opacity shadow-[0_0_15px_rgba(0,220,130,0.3)]`;
+            } else if (category === 'all') {
+                // 如果是all且没有传btnElement(通常是初始化或手动调用)，找到第一个按钮高亮
+                const firstBtn = categoryContainer.querySelector('button');
+                if(firstBtn) firstBtn.className = `category-btn active px-4 py-1.5 text-xs border border-primary bg-primary text-black font-bold rounded-sm uppercase tracking-wide hover:opacity-90 transition-opacity shadow-[0_0_15px_rgba(0,220,130,0.3)]`;
+            }
+
+            // 筛选逻辑
+            const query = searchInput.value.toLowerCase();
+            const filtered = toolsData.filter(tool => {
+                const matchesCategory = category === 'all' || tool.category === category;
+                const matchesSearch = tool.name.toLowerCase().includes(query) || 
+                                      tool.desc.toLowerCase().includes(query) ||
+                                      tool.category.toLowerCase().includes(query);
+                return matchesCategory && matchesSearch;
+            });
+
+            renderTools(filtered);
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const filtered = toolsData.filter(tool => 
+                tool.name.toLowerCase().includes(query) || 
+                tool.desc.toLowerCase().includes(query) ||
+                tool.category.toLowerCase().includes(query)
+            );
+            renderTools(filtered);
+            
+            // 搜索时重置分类高亮到All，或者你可以保持当前分类高亮并做交集，这里简单处理
+            // 如果需要保持分类，需要记录当前activeCategory，这里暂不复杂化
+        });
+
+        // 添加淡入动画 Keyframes
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        `;
+        document.head.appendChild(styleSheet);
+
+        init();
+
+    </script>
+</body>
+</html>
