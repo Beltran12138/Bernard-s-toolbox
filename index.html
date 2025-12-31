@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bernard的数字工具箱 | Bernard's Digital Toolbox</title>
+    <!-- 引入 Tailwind CSS (无需写 CSS 文件，直接用类名) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 FontAwesome 图标库 (用于显示图标) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 配置 Tailwind 的主题颜色 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6', // 蓝色主调，你可以改这个颜色代码来换肤
+                        dark: '#0f172a',    // 深色背景
+                        card: '#1e293b'     // 卡片背景
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 自定义滚动条样式 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        
+        /* 卡片悬停动画 */
+        .tool-card { transition: all 0.3s ease; }
+        .tool-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3); }
+    </style>
+</head>
+<body class="bg-dark text-gray-100 min-h-screen font-sans">
+
+    <!-- 顶部导航与搜索区 -->
+    <header class="sticky top-0 z-50 bg-dark/95 backdrop-blur border-b border-gray-800 shadow-lg">
+        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <!-- Logo / 标题 -->
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-toolbox text-3xl text-primary"></i>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide">Efficiency Hub</h1>
+                    <p class="text-xs text-gray-400">我的效率工具黄页</p>
+                </div>
+            </div>
+
+            <!-- 搜索框 -->
+            <div class="relative w-full md:w-96">
+                <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="searchInput" placeholder="搜索工具 (如: PDF, 去水印, AI...)" 
+                    class="w-full bg-card border border-gray-700 rounded-full py-2 pl-12 pr-4 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm placeholder-gray-500">
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="container mx-auto px-4 py-8">
+        
+        <!-- 分类标签按钮 (会自动根据你的数据生成，不用手动改这里) -->
+        <div class="flex flex-wrap gap-2 mb-8 justify-center md:justify-start" id="categoryContainer">
+            <button onclick="filterTools('all')" class="category-btn active px-4 py-1.5 rounded-full text-sm font-medium bg-primary text-white hover:bg-blue-600 transition-colors">
+                全部
+            </button>
+            <!-- 其他分类按钮将通过 JS 动态生成 -->
+        </div>
+
+        <!-- 工具卡片网格 -->
+        <div id="toolsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- 卡片将通过 JS 动态插入这里 -->
+        </div>
+
+        <!-- 无结果提示 -->
+        <div id="noResults" class="hidden text-center py-20">
+            <i class="fa-regular fa-folder-open text-4xl text-gray-600 mb-4"></i>
+            <p class="text-gray-400">没有找到相关工具，去 Github 找找？</p>
+        </div>
+    </main>
+
+    <!-- 底部 -->
+    <footer class="border-t border-gray-800 mt-12 py-8 text-center text-gray-500 text-sm">
+        <p>© 2025 Bernard's ToolBox. Built with AI & Passion.</p>
+        <div class="mt-2 space-x-4">
+            <a href="#" class="hover:text-primary"><i class="fa-brands fa-github"></i> GitHub</a>
+            <a href="#" class="hover:text-primary"><i class="fa-brands fa-twitter"></i> Twitter</a>
+        </div>
+    </footer>
+
+    <!-- 核心逻辑脚本 -->
+    <script>
+        // ==========================================
+        // ▼▼▼▼▼▼ 数据修改区 (在这里修改你的工具) ▼▼▼▼▼▼
+        // ==========================================
+        const toolsData = [
+            /* --- 使用说明 ---
+               1. 复制下面这块 { ... }, 的代码
+               2. 粘贴在下面任意位置
+               3. 修改引号里面的内容
+            */
+
+            // --- 这是一个模板 (你可以复制这块) ---
+            // {
+            //    name: "工具名称",
+            //    url: "https://链接地址",
+            //    desc: "一句话描述这个工具是干嘛的",
+            //    category: "分类名称", 
+            //    icon: "fa-solid fa-star", 
+            //    color: "text-white"
+            // },
+            // ------------------------------------
+
+            // --- 视频/图片编辑 ---
+            {
+                name: "EzRemove",
+                url: "https://ezremove.ai/zh/",
+                desc: "图片/视频背景/水印去除",
+                category: "图片/视频处理",
+                icon: "fa-solid fa-robot",
+                color: "text-orange-400"
+            },
+            {
+                name: "Gemini",
+                url: "https://gemini.google.com",
+                desc: "Google 出品，拥有超长上下文窗口，适合分析大量文档。",
+                category: "AI 助手",
+                icon: "fa-solid fa-gem",
+                color: "text-blue-400"
+            },
+            {
+                name: "NotebookLM",
+                url: "https://notebooklm.google.com",
+                desc: "可以将 PDF 文献转化为播客和笔记的 AI 学习工具。",
+                category: "学习研究",
+                icon: "fa-solid fa-book-open",
+                color: "text-green-400"
+            },
+            
+            // --- 媒体处理 (你的痛点) ---
+            {
+                name: "TinyWow",
+                url: "https://tinywow.com",
+                desc: "完全免费的 PDF 转 Word、去水印、视频剪辑工具箱。",
+                category: "格式转换",
+                icon: "fa-solid fa-wrench",
+                color: "text-purple-400"
+            },
+            {
+                name: "SnapTik",
+                url: "https://snaptik.app",
+                desc: "TikTok/抖音无水印视频下载工具。",
+                category: "视频工具",
+                icon: "fa-brands fa-tiktok",
+                color: "text-pink-500"
+            },
+            {
+                name: "ILovePDF",
+                url: "https://www.ilovepdf.com",
+                desc: "最经典的在线 PDF 处理工具，合并、拆分、压缩。",
+                category: "格式转换",
+                icon: "fa-solid fa-file-pdf",
+                color: "text-red-500"
+            },
+            
+            // --- 设计与创作 ---
+            {
+                name: "Canva",
+                url: "https://www.canva.com",
+                desc: "在线设计平台，快速制作海报、PPT 和社交媒体图。",
+                category: "设计",
+                icon: "fa-solid fa-palette",
+                color: "text-cyan-400"
+            },
+            {
+                name: "Remove.bg",
+                url: "https://www.remove.bg",
+                desc: "一键智能抠图，去除图片背景。",
+                category: "设计",
+                icon: "fa-solid fa-image",
+                color: "text-gray-300"
+            },
+
+            // --- 效率与工作流 ---
+            {
+                name: "Coze",
+                url: "https://www.coze.com",
+                desc: "字节跳动的 AI Bot 搭建平台，打造自动化工作流。",
+                category: "效率工具",
+                icon: "fa-solid fa-gear",
+                color: "text-indigo-400"
+            },
+             {
+                name: "GitHub",
+                url: "https://github.com",
+                desc: "代码托管，我的数字资产库。",
+                category: "开发",
+                icon: "fa-brands fa-github",
+                color: "text-white"
+            }
+        ];
+        // ==========================================
+        // ▲▲▲▲▲▲ 修改结束 ▲▲▲▲▲▲
+        // ==========================================
+
+        // ==========================================
+        // 2. 页面渲染逻辑 (不懂代码可以不用动这里)
+        // ==========================================
+        
+        const toolsGrid = document.getElementById('toolsGrid');
+        const searchInput = document.getElementById('searchInput');
+        const categoryContainer = document.getElementById('categoryContainer');
+        const noResults = document.getElementById('noResults');
+
+        // 初始化
+        function init() {
+            renderCategories();
+            renderTools(toolsData);
+        }
+
+        // 渲染分类按钮
+        function renderCategories() {
+            // 提取所有唯一的分类
+            const categories = [...new Set(toolsData.map(item => item.category))];
+            
+            categories.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.className = `category-btn px-4 py-1.5 rounded-full text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors border border-gray-700`;
+                btn.textContent = cat;
+                btn.onclick = () => filterTools(cat, btn);
+                categoryContainer.appendChild(btn);
+            });
+        }
+
+        // 渲染工具卡片
+        function renderTools(data) {
+            toolsGrid.innerHTML = ''; // 清空当前列表
+            
+            if (data.length === 0) {
+                noResults.classList.remove('hidden');
+                return;
+            } else {
+                noResults.classList.add('hidden');
+            }
+
+            data.forEach(tool => {
+                const card = document.createElement('a');
+                card.href = tool.url;
+                card.target = "_blank"; // 在新标签页打开
+                card.className = `tool-card block bg-card p-6 rounded-xl border border-gray-800 hover:border-primary/50 group`;
+                
+                card.innerHTML = `
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="p-3 bg-gray-800 rounded-lg group-hover:bg-gray-700 transition-colors">
+                            <i class="${tool.icon} ${tool.color} text-xl"></i>
+                        </div>
+                        <span class="text-xs font-mono text-gray-500 bg-gray-900 px-2 py-1 rounded">${tool.category}</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-100 mb-2 group-hover:text-primary transition-colors">${tool.name}</h3>
+                    <p class="text-sm text-gray-400 line-clamp-2">${tool.desc}</p>
+                `;
+                toolsGrid.appendChild(card);
+            });
+        }
+
+        // 筛选逻辑 (分类 + 搜索)
+        function filterTools(category, btnElement) {
+            // 1. 处理按钮样式
+            if (btnElement) {
+                document.querySelectorAll('.category-btn').forEach(btn => {
+                    btn.classList.remove('bg-primary', 'text-white');
+                    btn.classList.add('bg-gray-800', 'text-gray-300');
+                });
+                btnElement.classList.remove('bg-gray-800', 'text-gray-300');
+                btnElement.classList.add('bg-primary', 'text-white');
+            } else if (category === 'all') {
+                // 重置全部按钮样式
+                document.querySelectorAll('.category-btn').forEach(btn => {
+                   // 简单处理：第一个是全部
+                });
+            }
+
+            // 2. 筛选数据
+            const query = searchInput.value.toLowerCase();
+            const filtered = toolsData.filter(tool => {
+                const matchesCategory = category === 'all' || tool.category === category;
+                const matchesSearch = tool.name.toLowerCase().includes(query) || 
+                                      tool.desc.toLowerCase().includes(query) ||
+                                      tool.category.toLowerCase().includes(query);
+                return matchesCategory && matchesSearch;
+            });
+
+            renderTools(filtered);
+        }
+
+        // 搜索框监听
+        searchInput.addEventListener('input', (e) => {
+            // 获取当前选中的分类 (简单逻辑: 默认在全部下搜索，或者你可以结合当前active的按钮)
+            // 这里为了简化，搜索时重置为全部分类搜索
+            const query = e.target.value.toLowerCase();
+            const filtered = toolsData.filter(tool => 
+                tool.name.toLowerCase().includes(query) || 
+                tool.desc.toLowerCase().includes(query) ||
+                tool.category.toLowerCase().includes(query)
+            );
+            renderTools(filtered);
+        });
+
+        // 启动!
+        init();
+
+    </script>
+</body>
+</html>
