@@ -10,7 +10,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts: JetBrains Mono -->
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    
+    <!-- Fuse.js for fuzzy search -->
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -19,13 +21,13 @@
                         mono: ['"JetBrains Mono"', 'monospace'],
                     },
                     colors: {
-                        bg: '#050505',      // 极深灰/黑背景
-                        surface: '#0a0a0a', // 卡片/区块背景
-                        border: '#262626',  // 边框颜色
-                        primary: '#00dc82', // 极客绿 (Nuxt Green 风格)
+                        bg: '#050505',
+                        surface: '#0a0a0a',
+                        border: '#262626',
+                        primary: '#00dc82',
                         secondary: '#333333',
-                        text: '#e5e5e5',    // 主要文字
-                        muted: '#737373'    // 次要文字
+                        text: '#e5e5e5',
+                        muted: '#737373'
                     },
                     animation: {
                         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -44,13 +46,28 @@
             overflow-x: hidden;
         }
 
-        /* 自定义滚动条 - 极简风格 */
+        /* SVG 噪音纹理 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        main, header, footer {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* 自定义滚动条 */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #050505; }
         ::-webkit-scrollbar-thumb { background: #333; border: 1px solid #050505; }
         ::-webkit-scrollbar-thumb:hover { background: #00dc82; }
 
-        /* 玻璃拟态/模糊背景 */
+        /* 玻璃拟态 */
         .glass {
             background: rgba(5, 5, 5, 0.85);
             backdrop-filter: blur(8px);
@@ -63,43 +80,104 @@
             border-color: #00dc82;
         }
 
-        /* 选中态文字颜色 */
+        /* 选中态 */
         ::selection {
             background: #00dc82;
             color: #000;
         }
 
-        /* 打字机光标闪烁 */
+        /* 打字机光标 */
         .cursor-blink::after {
             content: '_';
             animation: blink 1s step-end infinite;
         }
-        @keyframes blink { 
+        @keyframes blink {
             0%, 100% { opacity: 1; }
             50% { opacity: 0; }
         }
 
-        /* 工具卡片特殊效果 */
+        /* 工具卡片磁吸效果 */
         .tool-card {
             position: relative;
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
         }
-        .tool-card::before {
+        .tool-card:hover {
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: 0 0 30px rgba(0, 220, 130, 0.2);
+        }
+
+        /* 卡片边框流光效果 */
+        .tool-card::after {
             content: '';
             position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            border: 1px solid transparent;
+            inset: -1px;
+            background: linear-gradient(90deg, transparent, #00dc82, transparent);
+            background-size: 200% 100%;
+            opacity: 0;
+            transition: opacity 0.3s;
+            animation: borderFlow 3s linear infinite;
             pointer-events: none;
-            transition: border-color 0.2s;
+            z-index: -1;
+            border-radius: 0.125rem;
+        }
+        .tool-card:hover::after {
+            opacity: 0.3;
+        }
+        @keyframes borderFlow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        /* 淡入动画 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Command Palette 样式 */
+        .palette-item {
+            transition: all 0.2s ease;
+        }
+        .palette-item:hover {
+            background: rgba(0, 220, 130, 0.1);
+            border-left-color: #00dc82 !important;
+        }
+
+        /* 评分星星 */
+        .rating-star {
+            width: 12px;
+            height: 12px;
+            transition: all 0.2s;
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
+    <!-- Command Palette -->
+    <div id="commandPalette" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-start justify-center pt-32">
+        <div class="w-full max-w-2xl bg-surface border-2 border-primary rounded-sm shadow-[0_0_50px_rgba(0,220,130,0.3)] overflow-hidden mx-4">
+            <!-- 搜索框 -->
+            <div class="flex items-center gap-3 px-4 py-3 border-b border-border">
+                <i class="fa-solid fa-terminal text-primary"></i>
+                <input type="text" id="paletteInput" placeholder="输入命令或搜索工具..."
+                    class="flex-1 bg-transparent text-text outline-none placeholder-muted text-sm">
+                <kbd class="text-xs text-muted border border-border px-2 py-1 rounded">ESC</kbd>
+            </div>
+            <!-- 结果列表 -->
+            <div id="paletteResults" class="max-h-96 overflow-y-auto">
+                <div class="px-4 py-8 text-center text-muted text-sm">
+                    <i class="fa-solid fa-keyboard text-2xl mb-2 block"></i>
+                    开始输入以搜索工具或命令...
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 顶部导航 -->
     <header class="sticky top-0 z-50 border-b border-border glass">
         <div class="container mx-auto px-4 md:px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-            
+
             <!-- Logo -->
             <div class="flex items-center gap-3 group cursor-default select-none">
                 <div class="w-8 h-8 bg-primary text-black flex items-center justify-center font-bold text-lg rounded-sm">
@@ -114,13 +192,16 @@
             <!-- 搜索框 -->
             <div class="relative w-full md:w-96 group">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-primary transition-colors font-bold">></span>
-                <input type="text" id="searchInput" placeholder="SEARCH_COMMAND..." 
+                <input type="text" id="searchInput" placeholder="SEARCH_COMMAND..."
                     class="w-full bg-surface border border-border py-2.5 pl-8 pr-4 text-sm focus:outline-none focus:border-primary focus:bg-surface/50 transition-all text-text placeholder-muted/50 rounded-sm">
-                <!-- 右侧装饰 -->
-                <div class="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                    <div class="w-1 h-1 bg-muted rounded-full group-focus-within:bg-primary transition-colors"></div>
-                    <div class="w-1 h-1 bg-muted rounded-full group-focus-within:bg-primary transition-colors delay-75"></div>
-                    <div class="w-1 h-1 bg-muted rounded-full group-focus-within:bg-primary transition-colors delay-150"></div>
+                <!-- 快捷键提示 -->
+                <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <kbd class="hidden md:inline text-[10px] text-muted border border-border px-1.5 py-0.5 rounded">Ctrl+K</kbd>
+                    <div class="flex gap-1">
+                        <div class="w-1 h-1 bg-muted rounded-full group-focus-within:bg-primary transition-colors"></div>
+                        <div class="w-1 h-1 bg-muted rounded-full group-focus-within:bg-primary transition-colors delay-75"></div>
+                        <div class="w-1 h-1 bg-muted rounded-full group-focus-within:bg-primary transition-colors delay-150"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -128,13 +209,27 @@
 
     <!-- 主体内容 -->
     <main class="container mx-auto px-4 md:px-6 py-10 flex-grow">
-        
-        <!-- 状态栏 (装饰性) -->
+
+        <!-- 状态栏 -->
         <div class="flex flex-wrap items-center gap-6 mb-8 text-xs text-muted border-b border-border/50 pb-4 select-none">
-            <span class="flex items-center gap-2"><div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>STATUS: ONLINE</span>
-            <span>MEM: 64TB</span>
-            <span>USER: ADMIN</span>
+            <span class="flex items-center gap-2">
+                <div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                <span id="apiStatus">STATUS: <span class="text-primary">CHECKING...</span></span>
+            </span>
+            <span id="btcPrice">BTC: $--,---</span>
+            <span id="toolCount">TOOLS: --</span>
             <span class="hidden md:inline ml-auto" id="currentDate">DATE: 2025-01-01</span>
+        </div>
+
+        <!-- Workflow 预设 -->
+        <div class="mb-8 pb-6 border-b border-border/30">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-xs text-muted uppercase tracking-widest">WORKFLOWS:</span>
+                <div class="h-px flex-1 bg-gradient-to-r from-border to-transparent"></div>
+            </div>
+            <div id="workflowContainer" class="flex flex-wrap gap-3">
+                <!-- 动态生成 -->
+            </div>
         </div>
 
         <!-- 分类筛选 -->
@@ -165,272 +260,116 @@
         <div class="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-xs text-muted gap-4">
             <p class="cursor-blink">> Bernard's Digital Workspace v2.0 // EOF</p>
             <div class="flex gap-6">
-                <a href="#" class="hover:text-primary transition-colors flex items-center gap-2 group">
+                <a href="https://github.com" target="_blank" class="hover:text-primary transition-colors flex items-center gap-2 group">
                     <i class="fa-brands fa-github"></i> <span class="group-hover:underline decoration-primary underline-offset-4">GITHUB</span>
                 </a>
-                <a href="#" class="hover:text-primary transition-colors flex items-center gap-2 group">
+                <a href="https://twitter.com" target="_blank" class="hover:text-primary transition-colors flex items-center gap-2 group">
                     <i class="fa-brands fa-twitter"></i> <span class="group-hover:underline decoration-primary underline-offset-4">TWITTER</span>
                 </a>
             </div>
         </div>
     </footer>
 
-    <!-- 逻辑脚本 -->
+    <!-- 核心逻辑脚本 -->
     <script>
         // ==========================================
-        // 数据源
+        // 全局变量
         // ==========================================
-        const toolsData = [
-            // --- 图片/视频编辑 ---
-            {
-                name: "EzRemove",
-                url: "https://ezremove.ai/zh/",
-                desc: "图片/视频背景/水印去除",
-                category: "图片视频处理",
-                icon: "fa-solid fa-eraser",
-                color: "" // 统一由CSS控制颜色，不再硬编码颜色类
-            },
-            {
-                name: "Coze",
-                url: "https://space.coze.cn/",
-                desc: "字节出品 AI Agent 平台",
-                category: "AI_AGENT",
-                icon: "fa-solid fa-gem",
-                color: ""
-            },
-            {
-                name: "AnyGen",
-                url: "https://www.anygen.io/home",
-                desc: "字节出品, 类似Manus",
-                category: "AI_AGENT",
-                icon: "fa-solid fa-book-open",
-                color: ""
-            },
-            
-            // --- 媒体处理 ---
-            {
-                name: "Grok",
-                url: "https://grok.com/",
-                desc: "搜索/事实核查/日常对话",
-                category: "搜索",
-                icon: "fa-solid fa-magnifying-glass-chart",
-                color: ""
-            },
-            {
-                name: "Cursor",
-                url: "https://cursor.com/",
-                desc: "OpenAI IDE 代码编辑器",
-                category: "待探索",
-                icon: "fa-solid fa-code",
-                color: ""
-            },
-            {
-                name: "Windsurf",
-                url: "https://windsurf.com/",
-                desc: "IDE 智能编程环境",
-                category: "待探索",
-                icon: "fa-solid fa-terminal",
-                color: ""
-            },
-            
-            // --- 设计与创作 ---
-            {
-                name: "Gemini",
-                url: "https://gemini.google.com/app",
-                desc: "Google 全能 AI 助手",
-                category: "AI_AGENT",
-                icon: "fa-solid fa-brain",
-                color: ""
-            },
-            {
-                name: "即梦",
-                url: "https://jimeng.jianying.com/ai-tool/home",
-                desc: "AI生图/视频",
-                category: "图片视频处理",
-                icon: "fa-solid fa-image",
-                color: ""
-            },
+        let toolsData = [];
+        let workflows = [];
+        let fuse = null;
+        let currentCategory = 'all';
+        let bossKeyActive = false;
 
-            // --- 效率与工作流 ---
-            {
-                name: "豆包",
-                url: "https://www.doubao.com/chat/",
-                desc: "AI p图/视频",
-                category: "图片视频处理",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "Manus",
-                url: "https://manus.im/app",
-                desc: "全能, 准确性欠缺",
-                category: "AI_AGENT",
-                icon: "fa-solid fa-image",
-                color: ""
-            },
-            {
-                name: "NotebookLM",
-                url: "https://notebooklm.google.com/",
-                desc: "刷题/深度学习",
-                category: "学习备考",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "WQU",
-                url: "https://www.wqu.edu/",
-                desc: "Fintech TPG",
-                category: "升学",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "UMPI",
-                url: "https://www.umpi.edu/",
-                desc: "全专业本硕",
-                category: "升学",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "Yandex",
-                url: "https://yandex.com/",
-                desc: "简洁无广告",
-                category: "搜索",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "王山水读通鉴",
-                url: "https://space.bilibili.com/431055518/upload/video",
-                desc: "历史up",
-                category: "视频频道",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "Allen的分享",
-                url: "https://www.youtube.com/@allen-cj/videos",
-                desc: "办卡/实用资讯",
-                category: "视频频道",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "CCTV百家讲坛官方频道",
-                url: "https://www.youtube.com/@ChinaHistoryTalks/videos",
-                desc: "历史",
-                category: "视频频道",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "张小珺",
-                url: "https://www.youtube.com/@benitazxj",
-                desc: "科技访谈",
-                category: "视频频道",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "YouTube",
-                url: "https://www.youtube.com/",
-                desc: "搜索/教程",
-                category: "搜索",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "老黄",
-                url: "https://www.youtube.com/@laohuang-007",
-                desc: "暗黑游",
-                category: "视频频道",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "图改改",
-                url: "https://tugaigai.com/",
-                desc: "图片文字修改",
-                category: "图片视频处理",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "Figma",
-                url: "https://www.figma.com/files/team/1562881125335982362/recents-and-sharing?fuid=1562881121454889160",
-                desc: "设计工具",
-                category: "待探索",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "花旗",
-                url: "https://marketinsights.citi.com/Market-Commentary/Weekly-Market-Update/index.html",
-                desc: "周度市场评论",
-                category: "研报",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "a16z",
-                url: "https://a16zcrypto.com/posts/focus-areas/research/",
-                desc: "月度crypto趋势",
-                category: "研报",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "MLH",
-                url: "https://fellowship.mlh.io/",
-                desc: "转码bootcamp",
-                category: "bootcamp & Internship",
-                icon: "fa-brands fa-github",
-                color: ""
-            },
-            {
-                name: "ping0",
-                url: "https://ping0.cc/",
-                desc: "IP检测",
-                category: "其他工具",
-                icon: "fa-brands fa-github",
-                color: ""
-            }
-        ];
-
-        // ==========================================
-        // 渲染逻辑
-        // ==========================================
-        
+        // DOM 元素
         const toolsGrid = document.getElementById('toolsGrid');
         const searchInput = document.getElementById('searchInput');
         const categoryContainer = document.getElementById('categoryContainer');
+        const workflowContainer = document.getElementById('workflowContainer');
         const noResults = document.getElementById('noResults');
+        const palette = document.getElementById('commandPalette');
+        const paletteInput = document.getElementById('paletteInput');
+        const paletteResults = document.getElementById('paletteResults');
 
-        // 设置日期
-        document.getElementById('currentDate').textContent = 'DATE: ' + new Date().toISOString().split('T')[0];
+        // ==========================================
+        // 数据加载
+        // ==========================================
+        async function loadData() {
+            try {
+                const response = await fetch('./data/tools.json');
+                const data = await response.json();
+                toolsData = data.tools;
+                workflows = data.workflows;
 
-        function init() {
-            renderCategories();
-            renderTools(toolsData);
+                // 初始化 Fuse.js
+                fuse = new Fuse(toolsData, {
+                    keys: ['name', 'desc', 'category', 'tags'],
+                    threshold: 0.3,
+                    includeScore: true,
+                });
+
+                init();
+            } catch (error) {
+                console.error('数据加载失败:', error);
+                toolsGrid.innerHTML = `
+                    <div class="col-span-full text-center py-24 border border-dashed border-red-500/50 rounded-sm bg-red-500/5">
+                        <i class="fa-solid fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
+                        <p class="text-red-500 font-bold text-lg">> ERROR: DATA_LOAD_FAILED</p>
+                        <p class="text-muted text-sm mt-2">无法加载工具数据，请检查 data/tools.json 文件</p>
+                    </div>
+                `;
+            }
         }
 
+        // ==========================================
+        // 初始化
+        // ==========================================
+        function init() {
+            renderCategories();
+            renderWorkflows();
+            renderTools(toolsData);
+            updateDate();
+            updateAPIStatus();
+            updateBTCPrice();
+            setupEventListeners();
+
+            // 定时更新
+            setInterval(updateBTCPrice, 60000); // 每分钟更新 BTC
+            setInterval(updateAPIStatus, 30000); // 每30秒检查 API
+
+            // 更新工具计数
+            document.getElementById('toolCount').textContent = `TOOLS: ${toolsData.length}`;
+        }
+
+        // ==========================================
+        // 渲染函数
+        // ==========================================
         function renderCategories() {
             const categories = [...new Set(toolsData.map(item => item.category))];
-            
+
             categories.forEach(cat => {
                 const btn = document.createElement('button');
-                // 默认样式
                 btn.className = `category-btn px-4 py-1.5 text-xs border border-border text-muted hover:border-primary hover:text-primary transition-all rounded-sm uppercase bg-surface`;
                 btn.textContent = `[${cat}]`;
-                btn.onclick = () => filterTools(cat, btn);
+                btn.onclick = () => filterByCategory(cat, btn);
                 categoryContainer.appendChild(btn);
+            });
+        }
+
+        function renderWorkflows() {
+            workflows.forEach(workflow => {
+                const btn = document.createElement('button');
+                const colorClass = workflow.color === 'primary' ? 'primary' : workflow.color;
+                btn.className = `px-3 py-1.5 text-xs bg-gradient-to-r from-${colorClass}/20 to-${colorClass}/10 border border-${colorClass}/50 text-${colorClass === 'primary' ? 'primary' : colorClass.replace('-500', '-400')} rounded-sm hover:shadow-[0_0_15px_rgba(0,220,130,0.3)] transition-all font-bold uppercase tracking-wide`;
+                btn.innerHTML = `<i class="${workflow.icon}"></i> ${workflow.name}`;
+                btn.onclick = () => loadWorkflow(workflow);
+                workflowContainer.appendChild(btn);
             });
         }
 
         function renderTools(data) {
             toolsGrid.innerHTML = '';
-            
+
             if (data.length === 0) {
                 noResults.classList.remove('hidden');
                 return;
@@ -442,11 +381,9 @@
                 const card = document.createElement('a');
                 card.href = tool.url;
                 card.target = "_blank";
-                // 卡片样式
-                card.className = `tool-card group block h-full bg-surface border border-border p-5 hover-glow hover:-translate-y-1 transition-all duration-300 relative overflow-hidden flex flex-col rounded-sm`;
-                
-                // 延迟动画
-                card.style.animation = `fadeIn 0.5s ease-out ${index * 0.05}s backwards`;
+                card.className = `tool-card group block h-full bg-surface border border-border p-5 hover-glow transition-all duration-300 relative overflow-hidden flex flex-col rounded-sm`;
+
+                card.style.animation = `fadeIn 0.5s ease-out ${index * 0.03}s backwards`;
 
                 card.innerHTML = `
                     <!-- 装饰角标 -->
@@ -465,16 +402,39 @@
                             ${tool.category}
                         </span>
                     </div>
-                    
+
                     <h3 class="text-lg font-bold text-text mb-2 group-hover:text-primary transition-colors flex items-center gap-2">
                         <span class="opacity-0 group-hover:opacity-100 -ml-4 group-hover:ml-0 transition-all duration-300 text-primary">></span>
                         ${tool.name}
                     </h3>
-                    
-                    <p class="text-xs text-muted leading-relaxed mb-6 flex-grow line-clamp-2 group-hover:text-gray-400 transition-colors">
+
+                    <p class="text-xs text-muted leading-relaxed mb-4 flex-grow line-clamp-2 group-hover:text-gray-400 transition-colors">
                         ${tool.desc}
                     </p>
-                    
+
+                    <!-- 标签 -->
+                    <div class="flex gap-1 flex-wrap mb-3">
+                        ${tool.tags.slice(0, 2).map(tag => `
+                            <span class="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20">${tag}</span>
+                        `).join('')}
+                    </div>
+
+                    <!-- 评分和难度 -->
+                    <div class="flex items-center gap-3 mb-3 text-[10px]">
+                        <div class="flex items-center gap-1">
+                            <span class="text-muted">推荐</span>
+                            <div class="flex gap-0.5">
+                                ${Array(5).fill(0).map((_, i) => `
+                                    <div class="rating-star ${i < tool.rating ? 'bg-primary' : 'bg-border'} rounded-sm"></div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1 ml-auto">
+                            <span class="text-muted">难度</span>
+                            <span class="text-primary">${'⚡'.repeat(tool.difficulty)}</span>
+                        </div>
+                    </div>
+
                     <div class="mt-auto pt-3 border-t border-border/50 flex justify-between items-center text-[10px] text-muted font-bold tracking-widest uppercase group-hover:text-primary/70 transition-colors">
                         <span>EXEC_MODULE</span>
                         <i class="fa-solid fa-arrow-right -translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all"></i>
@@ -484,7 +444,12 @@
             });
         }
 
-        function filterTools(category, btnElement) {
+        // ==========================================
+        // 筛选和搜索
+        // ==========================================
+        function filterByCategory(category, btnElement) {
+            currentCategory = category;
+
             // 重置按钮样式
             document.querySelectorAll('.category-btn').forEach(btn => {
                 btn.className = `category-btn px-4 py-1.5 text-xs border border-border text-muted hover:border-primary hover:text-primary transition-all rounded-sm uppercase bg-surface`;
@@ -493,50 +458,278 @@
             // 设置选中样式
             if (btnElement) {
                 btnElement.className = `category-btn active px-4 py-1.5 text-xs border border-primary bg-primary text-black font-bold rounded-sm uppercase tracking-wide hover:opacity-90 transition-opacity shadow-[0_0_15px_rgba(0,220,130,0.3)]`;
-            } else if (category === 'all') {
-                // 如果是all且没有传btnElement(通常是初始化或手动调用)，找到第一个按钮高亮
-                const firstBtn = categoryContainer.querySelector('button');
-                if(firstBtn) firstBtn.className = `category-btn active px-4 py-1.5 text-xs border border-primary bg-primary text-black font-bold rounded-sm uppercase tracking-wide hover:opacity-90 transition-opacity shadow-[0_0_15px_rgba(0,220,130,0.3)]`;
             }
 
-            // 筛选逻辑
-            const query = searchInput.value.toLowerCase();
-            const filtered = toolsData.filter(tool => {
-                const matchesCategory = category === 'all' || tool.category === category;
-                const matchesSearch = tool.name.toLowerCase().includes(query) || 
-                                      tool.desc.toLowerCase().includes(query) ||
-                                      tool.category.toLowerCase().includes(query);
-                return matchesCategory && matchesSearch;
-            });
+            applyFilters();
+        }
+
+        function filterTools(category) {
+            currentCategory = category;
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const query = searchInput.value.trim();
+            let filtered = toolsData;
+
+            // 分类筛选
+            if (currentCategory !== 'all') {
+                filtered = filtered.filter(tool => tool.category === currentCategory);
+            }
+
+            // 搜索筛选
+            if (query && fuse) {
+                const results = fuse.search(query);
+                const searchIds = new Set(results.map(r => r.item.id));
+                filtered = filtered.filter(tool => searchIds.has(tool.id));
+            }
 
             renderTools(filtered);
         }
 
-        searchInput.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase();
-            const filtered = toolsData.filter(tool => 
-                tool.name.toLowerCase().includes(query) || 
-                tool.desc.toLowerCase().includes(query) ||
-                tool.category.toLowerCase().includes(query)
-            );
+        function loadWorkflow(workflow) {
+            const filtered = toolsData.filter(tool => workflow.tools.includes(tool.id));
             renderTools(filtered);
-            
-            // 搜索时重置分类高亮到All，或者你可以保持当前分类高亮并做交集，这里简单处理
-            // 如果需要保持分类，需要记录当前activeCategory，这里暂不复杂化
-        });
 
-        // 添加淡入动画 Keyframes
-        const styleSheet = document.createElement("style");
-        styleSheet.innerText = `
-            @keyframes fadeIn {
-                from { opacity: 0; transform: translateY(10px); }
-                to { opacity: 1; transform: translateY(0); }
+            // 重置分类选择
+            currentCategory = 'all';
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.className = `category-btn px-4 py-1.5 text-xs border border-border text-muted hover:border-primary hover:text-primary transition-all rounded-sm uppercase bg-surface`;
+            });
+
+            // 显示通知
+            showNotification(`已加载场景: ${workflow.desc} | 包含 ${filtered.length} 个工具`);
+        }
+
+        // ==========================================
+        // Command Palette
+        // ==========================================
+        const commands = [
+            {
+                id: 'export',
+                name: '> 导出数据',
+                desc: '导出所有工具为 JSON 文件',
+                icon: 'fa-download',
+                action: exportData
+            },
+            {
+                id: 'reset',
+                name: '> 重置筛选',
+                desc: '清除所有筛选条件',
+                icon: 'fa-rotate-right',
+                action: resetFilters
+            },
+            {
+                id: 'stats',
+                name: '> 查看统计',
+                desc: '显示工具箱统计信息',
+                icon: 'fa-chart-bar',
+                action: showStats
             }
-        `;
-        document.head.appendChild(styleSheet);
+        ];
 
-        init();
+        function setupEventListeners() {
+            // 搜索框
+            searchInput.addEventListener('input', applyFilters);
 
+            // Command Palette 快捷键
+            document.addEventListener('keydown', (e) => {
+                // Ctrl+K / Cmd+K
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    togglePalette();
+                }
+
+                // Escape
+                if (e.key === 'Escape') {
+                    if (!palette.classList.contains('hidden')) {
+                        palette.classList.add('hidden');
+                        paletteInput.value = '';
+                    }
+                }
+
+                // Boss Key: Shift + Escape
+                if (e.key === 'Escape' && e.shiftKey) {
+                    e.preventDefault();
+                    toggleBossKey();
+                }
+            });
+
+            // Palette 搜索
+            paletteInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+
+                if (!query) {
+                    paletteResults.innerHTML = `
+                        <div class="px-4 py-8 text-center text-muted text-sm">
+                            <i class="fa-solid fa-keyboard text-2xl mb-2 block"></i>
+                            开始输入以搜索工具或命令...
+                        </div>
+                    `;
+                    return;
+                }
+
+                // 合并命令和工具
+                const cmdResults = commands.filter(cmd =>
+                    cmd.name.toLowerCase().includes(query) ||
+                    cmd.desc.toLowerCase().includes(query)
+                );
+
+                const toolResults = fuse ? fuse.search(query).slice(0, 5).map(r => r.item) : [];
+
+                renderPaletteResults([...cmdResults, ...toolResults]);
+            });
+
+            // 点击背景关闭 Palette
+            palette.addEventListener('click', (e) => {
+                if (e.target === palette) {
+                    palette.classList.add('hidden');
+                    paletteInput.value = '';
+                }
+            });
+        }
+
+        function togglePalette() {
+            palette.classList.toggle('hidden');
+            if (!palette.classList.contains('hidden')) {
+                paletteInput.focus();
+            } else {
+                paletteInput.value = '';
+            }
+        }
+
+        function renderPaletteResults(results) {
+            if (results.length === 0) {
+                paletteResults.innerHTML = `
+                    <div class="px-4 py-8 text-center text-muted text-sm">
+                        <i class="fa-solid fa-magnifying-glass text-2xl mb-2 block"></i>
+                        未找到匹配的工具或命令
+                    </div>
+                `;
+                return;
+            }
+
+            paletteResults.innerHTML = results.map(item => {
+                const isCommand = item.action !== undefined;
+                return `
+                    <div class="palette-item flex items-center gap-3 px-4 py-3 cursor-pointer border-l-2 border-transparent"
+                         onclick="${isCommand ? `commands.find(c => c.id === '${item.id}').action(); palette.classList.add('hidden'); paletteInput.value = '';` : `window.open('${item.url}', '_blank')`}">
+                        <i class="${item.icon} text-primary"></i>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-text font-bold text-sm truncate">${item.name}</div>
+                            ${item.desc ? `<div class="text-muted text-xs truncate">${item.desc}</div>` : ''}
+                            ${item.category ? `<div class="text-muted text-[10px] mt-1">${item.category}</div>` : ''}
+                        </div>
+                        <i class="fa-solid fa-arrow-right text-muted text-xs"></i>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==========================================
+        // 命令函数
+        // ==========================================
+        function exportData() {
+            const json = JSON.stringify(toolsData, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bernard-toolbox-backup-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showNotification('数据导出成功!');
+        }
+
+        function resetFilters() {
+            searchInput.value = '';
+            currentCategory = 'all';
+            filterTools('all');
+            document.querySelectorAll('.category-btn').forEach((btn, index) => {
+                if (index === 0) {
+                    btn.className = `category-btn active px-4 py-1.5 text-xs border border-primary bg-primary text-black font-bold rounded-sm uppercase tracking-wide hover:opacity-90 transition-opacity`;
+                } else {
+                    btn.className = `category-btn px-4 py-1.5 text-xs border border-border text-muted hover:border-primary hover:text-primary transition-all rounded-sm uppercase bg-surface`;
+                }
+            });
+            showNotification('已重置所有筛选条件');
+        }
+
+        function showStats() {
+            const categories = [...new Set(toolsData.map(t => t.category))];
+            const avgRating = (toolsData.reduce((sum, t) => sum + t.rating, 0) / toolsData.length).toFixed(1);
+
+            alert(`📊 工具箱统计\n\n总工具数: ${toolsData.length}\n分类数: ${categories.length}\n平均评分: ${avgRating} ⭐\n工作流: ${workflows.length}`);
+        }
+
+        function showNotification(message) {
+            const notif = document.createElement('div');
+            notif.className = 'fixed top-24 right-6 bg-surface border border-primary px-4 py-3 rounded-sm shadow-[0_0_30px_rgba(0,220,130,0.3)] z-50 text-sm font-bold';
+            notif.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-check-circle text-primary"></i>
+                    <span class="text-text">${message}</span>
+                </div>
+            `;
+            document.body.appendChild(notif);
+
+            setTimeout(() => {
+                notif.style.transition = 'opacity 0.3s';
+                notif.style.opacity = '0';
+                setTimeout(() => notif.remove(), 300);
+            }, 3000);
+        }
+
+        // ==========================================
+        // Boss Key
+        // ==========================================
+        function toggleBossKey() {
+            bossKeyActive = !bossKeyActive;
+
+            if (bossKeyActive) {
+                document.body.innerHTML = `
+                    <iframe src="https://www.google.com/search?igu=1"
+                        class="w-full h-screen border-0"></iframe>
+                `;
+            } else {
+                location.reload();
+            }
+        }
+
+        // ==========================================
+        // 状态栏更新
+        // ==========================================
+        function updateDate() {
+            const date = new Date().toISOString().split('T')[0];
+            document.getElementById('currentDate').textContent = `DATE: ${date}`;
+        }
+
+        async function updateBTCPrice() {
+            try {
+                const res = await fetch('https://api.coindesk.com/v1/bpi/currentprice/BTC.json');
+                const data = await res.json();
+                const price = Math.round(data.bpi.USD.rate_float).toLocaleString();
+                document.getElementById('btcPrice').textContent = `BTC: $${price}`;
+            } catch (error) {
+                document.getElementById('btcPrice').textContent = 'BTC: OFFLINE';
+            }
+        }
+
+        async function updateAPIStatus() {
+            try {
+                const res = await fetch('https://api.github.com/zen', { method: 'HEAD' });
+                const status = res.ok ? 'ONLINE' : 'DEGRADED';
+                const color = res.ok ? 'primary' : 'yellow-500';
+                document.getElementById('apiStatus').innerHTML = `STATUS: <span class="text-${color}">${status}</span>`;
+            } catch (error) {
+                document.getElementById('apiStatus').innerHTML = 'STATUS: <span class="text-red-500">OFFLINE</span>';
+            }
+        }
+
+        // ==========================================
+        // 启动应用
+        // ==========================================
+        loadData();
     </script>
 </body>
 </html>
