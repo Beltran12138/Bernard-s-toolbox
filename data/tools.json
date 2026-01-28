@@ -659,6 +659,17 @@
       "icon": "fa-solid fa-atom",
       "rating": 5,
       "difficulty": 5
+    },
+     {
+      "id": "liepin",
+      "name": "猎聘",
+      "url": "https://www.liepin.com/zhaopin/?city=320&dq=320&pubTime=&currentPage=0&pageSize=40&key=&suggestTag=&workYearCode=1&compId=&compName=&compTag=&industry=&salaryCode=&jobKind=&compScale=&compKind=&compStage=&eduLevel=&otherCity=&ckId=x3bnzhopbw1gio6a4ohkz3jjy5cb0d3a&scene=condition&skId=qkbzw5csnndrplhwocccblxpbsgy7ac8&fkId=n1nqe5e0u3dfik7hdybdkbfvzmt279b9&sfrom=search_job_pc&suggestId=",
+      "desc": "香港/中资",
+      "category": "升学求职",
+      "tags": ["求职", "香港"],
+      "icon": "fa-solid fa-atom",
+      "rating": 5,
+      "difficulty": 5
     }
   ],
   "workflows": [
