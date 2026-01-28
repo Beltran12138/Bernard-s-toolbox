@@ -692,6 +692,28 @@
       "icon": "fa-solid fa-atom",
       "rating": 5,
       "difficulty": 1
+    },
+    {
+      "id": "tgzhaopin",
+      "name": "TG招聘",
+      "url": "https://www.jobtg.ai/job/",
+      "desc": "灰产",
+      "category": "升学求职",
+      "tags": ["功成身退"],
+      "icon": "fa-solid fa-atom",
+      "rating": 5,
+      "difficulty": 1
+    },
+    {
+      "id": "dianyashequ",
+      "name": "电鸭社区",
+      "url": "https://eleduck.com/jobs-channel",
+      "desc": "远程/技术",
+      "category": "升学求职",
+      "tags": ["功成身退"],
+      "icon": "fa-solid fa-atom",
+      "rating": 5,
+      "difficulty": 1
     }
   ],
   "workflows": [
