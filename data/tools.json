@@ -626,6 +626,17 @@
       "icon": "fa-solid fa-atom",
       "rating": 5,
       "difficulty": 2
+    },
+    {
+      "id": "offertoday",
+      "name": "OfferToday",
+      "url": "https://www.offertoday.com/hk/zone/IANG",
+      "desc": "香港招聘",
+      "category": "升学求职",
+      "tags": ["拉完了"],
+      "icon": "fa-solid fa-atom",
+      "rating": 1,
+      "difficulty": 1
     }
   ],
   "workflows": [
