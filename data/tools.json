@@ -668,8 +668,30 @@
       "category": "升学求职",
       "tags": ["求职", "香港"],
       "icon": "fa-solid fa-atom",
-      "rating": 5,
+      "rating": 3,
       "difficulty": 5
+    },
+    {
+      "id": "zhilianzhaopin",
+      "name": "智联招聘",
+      "url": "https://xiaoyuan.zhaopin.com/search/index?refcode=4485&city=561&cateType=major&sourceType=2&nature=1",
+      "desc": "香港/中资",
+      "category": "升学求职",
+      "tags": ["求职", "香港"],
+      "icon": "fa-solid fa-atom",
+      "rating": 3,
+      "difficulty": 5
+    },
+    {
+      "id": "jarsy",
+      "name": "jarsy",
+      "url": "https://app.jarsy.com/layout/Home",
+      "desc": "pre ipo",
+      "category": "其他工具",
+      "tags": ["待探索"],
+      "icon": "fa-solid fa-atom",
+      "rating": 5,
+      "difficulty": 1
     }
   ],
   "workflows": [
