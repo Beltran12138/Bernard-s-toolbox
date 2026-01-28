@@ -637,6 +637,28 @@
       "icon": "fa-solid fa-atom",
       "rating": 1,
       "difficulty": 1
+    },
+    {
+      "id": "binance",
+      "name": "Binance",
+      "url": "https://www.binance.com/en/careers/job-openings?team=All",
+      "desc": "币安香港",
+      "category": "招聘官网",
+      "tags": ["加密货币", "求职", "香港"],
+      "icon": "fa-solid fa-atom",
+      "rating": 5,
+      "difficulty": 5
+    },
+     {
+      "id": "redotpay",
+      "name": "Redotpay",
+      "url": "https://redotpay.bamboohr.com/careers?source=aWQ9MTg=",
+      "desc": "Paytech",
+      "category": "招聘官网",
+      "tags": ["加密货币", "求职", "香港"],
+      "icon": "fa-solid fa-atom",
+      "rating": 5,
+      "difficulty": 5
     }
   ],
   "workflows": [
